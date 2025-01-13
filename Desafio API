@@ -1,0 +1,122 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class ApiClient {
+    public String getBooks(String query) throws Exception {
+        String url = "https://www.googleapis.com/books/v1/volumes?q=" + query;
+        URL obj = new URL(url);
+        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+        con.setRequestMethod("GET");
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        String inputLine;
+        StringBuilder response = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) {
+            response.append(inputLine);
+        }
+        in.close();
+        return response.toString();
+    }
+}
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+public class BookService {
+    private final ApiClient apiClient;
+    private final Gson gson;
+
+    public BookService() {
+        this.apiClient = new ApiClient();
+        this.gson = new Gson();
+    }
+
+    public void fetchBooks(String query) {
+        try {
+            String jsonResponse = apiClient.getBooks(query);
+            JsonObject jsonObject = gson.fromJson(jsonResponse, JsonObject.class);
+            // Processar jsonObject para extrair informações dos livros
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+
+public class BookRepository {
+    private Connection connect() {
+        // Conectar ao banco de dados
+        String url = "jdbc:sqlite:books.db"; // Exemplo com SQLite
+        Connection conn = null;
+        try {
+            conn = DriverManager.getConnection(url);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return conn;
+    }
+
+    public void insertBook(String title, String author) {
+        String sql = "INSERT INTO books(title, author) VALUES(?, ?)";
+
+        try (Connection conn = this.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, title);
+            pstmt.setString(2, author);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        BookService bookService = new BookService();
+        BookRepository bookRepository = new BookRepository();
+
+        while (true) {
+            System.out.println("Escolha uma opção:");
+            System.out.println("1. Buscar livros");
+            System.out.println("2. Adicionar livro ao catálogo");
+            System.out.println("3. Listar todos os livros");
+            System.out.println("4. Buscar livros por autor");
+            System.out.println("5. Sair");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Limpar buffer
+
+            switch (choice) {
+                case 1:
+                    System.out.print("Digite o título do livro: ");
+                    String query = scanner.nextLine();
+                    bookService.fetchBooks(query);
+                    break;
+                case 2:
+                    System.out.print("Digite o título do livro: ");
+                    String title = scanner.nextLine();
+                    System.out.print("Digite o autor do livro: ");
+                    String author = scanner.nextLine();
+                    bookRepository.insertBook(title, author);
+                    break;
+                case 3:
+                    // Implementar listagem de livros
+                    break;
+                case 4:
+                    // Implementar busca por autor
+                    break;
+                case 5:
+                    System.out.println("Saindo...");
+                    scanner.close();
+                    return;
+                default:
+                    System.out.println("Opção inválida.");
+            }
+        }
+    }
+}
